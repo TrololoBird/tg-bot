@@ -65,4 +65,10 @@ python -m combined_bot.main
 - `OI_MIN_AVG_DAILY_VOL_USD` — минимальный средний дневной объём (USD) для OI-сигнала.
 - `OI_SORT_BY` — сортировка OI-сигналов (`oi_usd` по умолчанию, также `oi_contracts`, `price_growth`, `avg_daily_vol_usd`).
 
+Пример выбора режима сортировки:
+
+```bash
+export OI_SORT_BY=price_growth
+```
+
 `MarketSymbol.from_raw()` нормализует символы в форматах CCXT: удаляет пробелы, берёт часть до `:`, поддерживает пары вида `BASE/QUOTE` и склеенные тикеры с `USDT`/`USDC` (например `BTC/USDT:USDT` → `BTC/USDT`).
