@@ -27,7 +27,7 @@ class PricePumpScanner(BaseScanner):
                     continue
                 ratio = last_close / first_close
                 usd_volume = sum(float(c[4]) * float(c[5]) for c in candles)
-                if ratio < config.MIN_PRICE_RATIO or usd_volume < config.MIN_PRICE_VOL_USD_24H:
+                if ratio < config.MIN_PRICE_RATIO or usd_volume < config.MIN_PRICE_SCANNER_VOL_USD_24H:
                     continue
                 close_ts = int(candles[-1][0])
                 signals.append(
