@@ -16,5 +16,6 @@ OI_GROWTH_PCT = float(os.getenv("OI_GROWTH_PCT", "50"))
 
 OI_MAX_PRICE_GROWTH_PCT = float(os.getenv("OI_MAX_PRICE_GROWTH_PCT", "50"))
 OI_MIN_AVG_DAILY_VOL_USD = float(os.getenv("OI_MIN_AVG_DAILY_VOL_USD", "5000000"))
+OI_SORT_BY = os.getenv("OI_SORT_BY", "oi_usd").strip().lower()
 
 ENABLED_EXCHANGES = [item.strip() for item in os.getenv("ENABLED_EXCHANGES", "binance").split(",") if item.strip()]

@@ -13,8 +13,19 @@ class OpenInterestScanner(BaseScanner):
     id = "oi_spike"
     name = "Open Interest Spike"
 
+
+    def _sort_value(self, oi_end: float, avg_daily_vol_usd: float, price_growth_pct: float) -> float:
+        mode = config.OI_SORT_BY
+        if mode == "oi_contracts":
+            return oi_end
+        if mode == "price_growth":
+            return price_growth_pct
+        if mode == "avg_daily_vol_usd":
+            return avg_daily_vol_usd
+        return oi_end * avg_daily_vol_usd
+
     async def scan(self, adapters: Dict[str, BaseExchangeAdapter]) -> List[SignalEvent]:
-        signals: List[SignalEvent] = []
+        signals_with_sort: List[tuple[float, SignalEvent]] = []
         for exchange, adapter in adapters.items():
             symbols = await adapter.list_symbols()
             for raw_symbol in symbols:
@@ -46,22 +57,23 @@ class OpenInterestScanner(BaseScanner):
                     continue
 
                 ts = int(oi_hist[-1].get("ts", 0)) or int(datetime.now(tz=timezone.utc).timestamp() * 1000)
-                signals.append(
-                    SignalEvent(
-                        scanner_id=self.id,
-                        symbol=MarketSymbol.from_raw(exchange, raw_symbol, market_type="linear_perp"),
-                        timeframe="1d",
-                        detected_at=datetime.now(timezone.utc),
-                        candle_close_at=datetime.fromtimestamp(ts / 1000, timezone.utc),
-                        score=min(1.0, growth_pct / 200),
-                        metrics={
-                            "oi_start": start,
-                            "oi_end": end,
-                            "oi_growth_pct": growth_pct,
-                            "price_growth_pct": price_growth_pct,
-                            "avg_daily_vol_usd": avg_daily_vol_usd,
-                        },
-                        ttl_seconds=config.OI_DAYS * 24 * 3600,
-                    )
+                signal = SignalEvent(
+                    scanner_id=self.id,
+                    symbol=MarketSymbol.from_raw(exchange, raw_symbol, market_type="linear_perp"),
+                    timeframe="1d",
+                    detected_at=datetime.now(timezone.utc),
+                    candle_close_at=datetime.fromtimestamp(ts / 1000, timezone.utc),
+                    score=min(1.0, growth_pct / 200),
+                    metrics={
+                        "oi_start": start,
+                        "oi_end": end,
+                        "oi_growth_pct": growth_pct,
+                        "price_growth_pct": price_growth_pct,
+                        "avg_daily_vol_usd": avg_daily_vol_usd,
+                    },
+                    ttl_seconds=config.OI_DAYS * 24 * 3600,
                 )
-        return signals
+                sort_value = self._sort_value(end, signal.metrics["avg_daily_vol_usd"], signal.metrics["price_growth_pct"])
+                signals_with_sort.append((sort_value, signal))
+        signals_with_sort.sort(key=lambda item: item[0], reverse=True)
+        return [item[1] for item in signals_with_sort]
