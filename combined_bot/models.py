@@ -34,7 +34,13 @@ class MarketSymbol:
             base, quote = tradable_symbol[:-4], "USDT"
         elif tradable_symbol.endswith("USDC"):
             base, quote = tradable_symbol[:-4], "USDC"
-        return cls(exchange=exchange.lower(), market_type=market_type, raw_symbol=normalized, base_asset=base, quote_asset=quote)
+        return cls(
+            exchange=exchange.lower(),
+            market_type=market_type,
+            raw_symbol=tradable_symbol,
+            base_asset=base,
+            quote_asset=quote,
+        )
 
 
 @dataclass

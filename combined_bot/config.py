@@ -14,4 +14,7 @@ MIN_PRICE_RATIO = float(os.getenv("MIN_PRICE_RATIO", "1.30"))
 OI_DAYS = int(os.getenv("OI_DAYS", "30"))
 OI_GROWTH_PCT = float(os.getenv("OI_GROWTH_PCT", "50"))
 
+OI_MAX_PRICE_GROWTH_PCT = float(os.getenv("OI_MAX_PRICE_GROWTH_PCT", "50"))
+OI_MIN_AVG_DAILY_VOL_USD = float(os.getenv("OI_MIN_AVG_DAILY_VOL_USD", "5000000"))
+
 ENABLED_EXCHANGES = [item.strip() for item in os.getenv("ENABLED_EXCHANGES", "binance").split(",") if item.strip()]

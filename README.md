@@ -52,3 +52,16 @@ pip install -r requirements.txt
 ```bash
 python -m combined_bot.main
 ```
+
+
+## Переменные окружения (основные)
+
+- `MIN_VOL_USD_LAST` — минимальный объём за последние 24 часа (USD).
+- `MIN_VOL_RATIO` — минимальный коэффициент роста объёма (24ч к предыдущим 24ч).
+- `MIN_PRICE_RATIO` — минимальный коэффициент роста цены за 24 часа.
+- `OI_DAYS` — окно по open interest в днях.
+- `OI_GROWTH_PCT` — минимальный прирост OI в процентах.
+- `OI_MAX_PRICE_GROWTH_PCT` — максимальный допустимый рост цены для OI-сигнала.
+- `OI_MIN_AVG_DAILY_VOL_USD` — минимальный средний дневной объём (USD) для OI-сигнала.
+
+`MarketSymbol.from_raw()` нормализует символы в форматах CCXT: удаляет пробелы, берёт часть до `:`, поддерживает пары вида `BASE/QUOTE` и склеенные тикеры с `USDT`/`USDC` (например `BTC/USDT:USDT` → `BTC/USDT`).
