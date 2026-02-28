@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
+from . import config
+
 
 @dataclass(frozen=True)
 class MarketSymbol:
@@ -31,7 +33,7 @@ class MarketSymbol:
         if "/" in tradable_symbol:
             base, quote = tradable_symbol.split("/", 1)
         else:
-            for known_quote in ("USDT", "USDC", "BUSD", "FDUSD", "DAI"):
+            for known_quote in config.KNOWN_QUOTE_ASSETS:
                 if tradable_symbol.endswith(known_quote):
                     base, quote = tradable_symbol[: -len(known_quote)], known_quote
                     break
@@ -74,7 +76,7 @@ class SignalEvent:
 class UserSettings:
     chat_id: int
     is_active: bool = True
-    enabled_scanners: List[str] = field(default_factory=lambda: ["vol_spike", "price_pump", "oi_spike", "ml_predictor"])
+    enabled_scanners: List[str] = field(default_factory=lambda: ["vol_spike", "price_pump", "oi_spike"])
     enabled_exchanges: List[str] = field(default_factory=lambda: ["binance"])
     min_score_threshold: float = 0.0
     blacklist_symbols: List[str] = field(default_factory=list)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,11 +12,14 @@ from ..models import SignalEvent, UserSettings
 
 
 class Database:
+    _PRUNE_INTERVAL_SECONDS = 3600
+
     def __init__(self, path: Path) -> None:
         self.path = path
-        if self.path.parent != Path("."):
-            self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._last_prune_at = 0.0
         self._init_db()
+        self.prune_expired_dedup(force=True)
 
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
@@ -46,7 +50,7 @@ class Database:
                 """
                 CREATE TABLE IF NOT EXISTS signal_dedup (
                     dedup_key TEXT PRIMARY KEY,
-                    expires_at TEXT NOT NULL
+                    expires_at INTEGER NOT NULL
                 )
                 """
             )
@@ -92,10 +96,14 @@ class Database:
             for row in rows
         ]
 
-    def prune_expired_dedup(self) -> None:
-        now = datetime.now(timezone.utc).isoformat()
+    def prune_expired_dedup(self, force: bool = False) -> None:
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        now_monotonic = time.monotonic()
+        if not force and now_monotonic - self._last_prune_at < self._PRUNE_INTERVAL_SECONDS:
+            return
         with self._connect() as conn:
-            conn.execute("DELETE FROM signal_dedup WHERE expires_at <= ?", (now,))
+            conn.execute("DELETE FROM signal_dedup WHERE expires_at <= ?", (now_ts,))
+        self._last_prune_at = now_monotonic
 
     def is_duplicate(self, signal: SignalEvent) -> bool:
         self.prune_expired_dedup()
@@ -108,5 +116,5 @@ class Database:
         with self._connect() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO signal_dedup(dedup_key, expires_at) VALUES (?, ?)",
-                (signal.dedup_key, expires.isoformat()),
+                (signal.dedup_key, int(expires.timestamp())),
             )
