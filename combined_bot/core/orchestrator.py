@@ -39,20 +39,14 @@ class Orchestrator:
             signals.extend(result)
         return signals
 
-
-    @staticmethod
-    def _normalize_symbol(symbol: str) -> str:
-        return symbol.strip().upper().split(":", 1)[0]
-
     async def _deliver(self, signal: SignalEvent, active_settings) -> None:
-        signal_symbol = self._normalize_symbol(signal.symbol.raw_symbol)
+        signal_symbol = signal.symbol.canonical_symbol
         for settings in active_settings:
             if signal.scanner_id not in settings.enabled_scanners:
                 continue
             if signal.symbol.exchange not in settings.enabled_exchanges:
                 continue
-            normalized_blacklist = {self._normalize_symbol(item) for item in settings.blacklist_symbols}
-            if signal_symbol in normalized_blacklist:
+            if signal_symbol in settings.blacklist_symbols:
                 continue
             if signal.score < settings.min_score_threshold:
                 continue

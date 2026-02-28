@@ -18,7 +18,8 @@ class VolumeSpikeScanner(BaseScanner):
         for exchange, adapter in adapters.items():
             symbols = await adapter.list_symbols()
             for raw_symbol in symbols:
-                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1h", limit=48)
+                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1h", limit=49)
+                candles = self._drop_open_candle(candles, timeframe="1h")
                 if len(candles) < 48:
                     continue
                 prev = candles[:24]

@@ -4,6 +4,7 @@ import asyncio
 import logging
 
 from combined_bot import config
+from combined_bot.adapters.base import BaseExchangeAdapter
 from combined_bot.adapters.binance import BinanceFuturesAdapter
 from combined_bot.core.database import Database
 from combined_bot.core.orchestrator import Orchestrator
@@ -11,11 +12,11 @@ from combined_bot.delivery.telegram_dispatcher import TelegramDispatcher
 from combined_bot.scanners import OpenInterestScanner, PricePumpScanner, VolumeSpikeScanner
 
 
-def _build_adapters() -> dict[str, BinanceFuturesAdapter]:
+def _build_adapters() -> dict[str, BaseExchangeAdapter]:
     available_adapters = {
         "binance": BinanceFuturesAdapter,
     }
-    adapters: dict[str, BinanceFuturesAdapter] = {}
+    adapters: dict[str, BaseExchangeAdapter] = {}
     for exchange in config.ENABLED_EXCHANGES:
         exchange_id = exchange.strip().lower()
         adapter_class = available_adapters.get(exchange_id)
