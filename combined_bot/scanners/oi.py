@@ -13,7 +13,6 @@ class OpenInterestScanner(BaseScanner):
     id = "oi_spike"
     name = "Open Interest Spike"
 
-
     def _sort_value(self, oi_end: float, avg_daily_vol_usd: float, price_growth_pct: float, end_close: float) -> float:
         mode = config.OI_SORT_BY
         if mode == "oi_contracts":
@@ -24,28 +23,41 @@ class OpenInterestScanner(BaseScanner):
             return avg_daily_vol_usd
         return oi_end * end_close
 
+    def _drop_open_oi_point(self, oi_hist: List[Dict[str, float]]) -> List[Dict[str, float]]:
+        if not oi_hist:
+            return oi_hist
+        now_ts = int(datetime.now(timezone.utc).timestamp())
+        last_ts = int(float(oi_hist[-1].get("ts", 0)) / 1000)
+        if now_ts < last_ts + self._timeframe_seconds("1d"):
+            return oi_hist[:-1]
+        return oi_hist
+
     async def scan(self, adapters: Dict[str, BaseExchangeAdapter]) -> List[SignalEvent]:
         signals_with_sort: List[tuple[float, SignalEvent]] = []
         for exchange, adapter in adapters.items():
             symbols = await adapter.list_symbols()
             for raw_symbol in symbols:
-                oi_hist = await adapter.fetch_open_interest_history(raw_symbol, days=config.OI_DAYS)
-                if len(oi_hist) < 2:
+                oi_hist = await adapter.fetch_open_interest_history(raw_symbol, days=config.OI_DAYS + 1)
+                oi_hist = self._drop_open_oi_point(oi_hist)
+                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1d", limit=config.OI_DAYS + 2)
+                candles = self._drop_open_candle(candles, timeframe="1d")
+
+                window_size = min(config.OI_DAYS, len(oi_hist), len(candles))
+                if window_size < 2:
                     continue
-                start = float(oi_hist[0].get("oi", 0.0))
-                end = float(oi_hist[-1].get("oi", 0.0))
+                aligned_oi = oi_hist[-window_size:]
+                aligned_candles = candles[-window_size:]
+
+                start = float(aligned_oi[0].get("oi", 0.0))
+                end = float(aligned_oi[-1].get("oi", 0.0))
                 if start <= 0:
                     continue
                 growth_pct = (end - start) / start * 100
                 if growth_pct < config.OI_GROWTH_PCT:
                     continue
-                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1d", limit=config.OI_DAYS + 2)
-                candles = self._drop_open_candle(candles, timeframe="1d")
-                if len(candles) < 2:
-                    continue
 
-                start_close = float(candles[0][4])
-                end_close = float(candles[-1][4])
+                start_close = float(aligned_candles[0][4])
+                end_close = float(aligned_candles[-1][4])
                 if start_close <= 0:
                     continue
 
@@ -53,12 +65,13 @@ class OpenInterestScanner(BaseScanner):
                 if price_growth_pct > config.OI_MAX_PRICE_GROWTH_PCT:
                     continue
 
-                vol_window = candles[-config.OI_DAYS:] if len(candles) >= config.OI_DAYS else candles
-                avg_daily_vol_usd = sum(float(candle[4]) * float(candle[5]) for candle in vol_window) / len(vol_window)
+                avg_daily_vol_usd = (
+                    sum(float(candle[4]) * float(candle[5]) for candle in aligned_candles) / len(aligned_candles)
+                )
                 if avg_daily_vol_usd < config.OI_MIN_AVG_DAILY_VOL_USD:
                     continue
 
-                ts = int(oi_hist[-1].get("ts", 0)) or int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                ts = int(aligned_oi[-1].get("ts", 0)) or int(datetime.now(tz=timezone.utc).timestamp() * 1000)
                 signal = SignalEvent(
                     scanner_id=self.id,
                     symbol=MarketSymbol.from_raw(exchange, raw_symbol, market_type="linear_perp"),

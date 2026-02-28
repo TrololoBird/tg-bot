@@ -10,6 +10,17 @@ from typing import Dict, List, Optional
 from . import config
 
 
+def _unique_normalized(items: List[str]) -> List[str]:
+    unique: List[str] = []
+    seen: set[str] = set()
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        unique.append(item)
+    return unique
+
+
 @dataclass(frozen=True)
 class MarketSymbol:
     exchange: str
@@ -43,11 +54,12 @@ class MarketSymbol:
                 if tradable_symbol.endswith(known_quote):
                     base, quote = tradable_symbol[: -len(known_quote)], known_quote
                     break
+        canonical_symbol = f"{base}/{quote}" if quote else tradable_symbol
         return cls(
             exchange=exchange.lower(),
             market_type=market_type,
             raw_symbol=normalized,
-            canonical_symbol=tradable_symbol,
+            canonical_symbol=canonical_symbol,
             base_asset=base,
             quote_asset=quote,
         )
@@ -90,8 +102,14 @@ class UserSettings:
     timezone: str = "UTC"
 
     def __post_init__(self) -> None:
-        self.enabled_scanners = [item.strip().lower() for item in self.enabled_scanners if item.strip()]
-        self.enabled_exchanges = [item.strip().lower() for item in self.enabled_exchanges if item.strip()]
-        self.blacklist_symbols = [
+        self.enabled_scanners = _unique_normalized(
+            [item.strip().lower() for item in self.enabled_scanners if item.strip()]
+        )
+        self.enabled_exchanges = _unique_normalized(
+            [item.strip().lower() for item in self.enabled_exchanges if item.strip()]
+        )
+        self.blacklist_symbols = _unique_normalized(
+            [
             MarketSymbol.normalize_symbol(item) for item in self.blacklist_symbols if item.strip()
-        ]
+            ]
+        )

@@ -68,3 +68,13 @@ class Orchestrator:
         except asyncio.CancelledError:
             self.logger.info("orchestrator stopped")
             raise
+        finally:
+            for adapter in self.adapters.values():
+                try:
+                    await adapter.close()
+                except Exception:
+                    self.logger.exception("failed to close adapter")
+            try:
+                await self.dispatcher.close()
+            except Exception:
+                self.logger.exception("failed to close dispatcher")

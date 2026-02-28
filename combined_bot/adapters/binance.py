@@ -23,7 +23,7 @@ class BinanceFuturesAdapter(BaseExchangeAdapter):
         await self._ensure_markets_loaded()
         symbols: List[str] = []
         for market in self._client.markets.values():
-            if market.get("active") and market.get("swap") and market.get("linear"):
+            if market.get("active") and market.get("swap") and market.get("linear") and market.get("quote") == "USDT":
                 symbols.append(str(market["symbol"]))
         return symbols
 
