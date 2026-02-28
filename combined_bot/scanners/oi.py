@@ -14,7 +14,7 @@ class OpenInterestScanner(BaseScanner):
     name = "Open Interest Spike"
 
 
-    def _sort_value(self, oi_end: float, avg_daily_vol_usd: float, price_growth_pct: float) -> float:
+    def _sort_value(self, oi_end: float, avg_daily_vol_usd: float, price_growth_pct: float, end_close: float) -> float:
         mode = config.OI_SORT_BY
         if mode == "oi_contracts":
             return oi_end
@@ -22,7 +22,7 @@ class OpenInterestScanner(BaseScanner):
             return price_growth_pct
         if mode == "avg_daily_vol_usd":
             return avg_daily_vol_usd
-        return oi_end * avg_daily_vol_usd
+        return oi_end * end_close
 
     async def scan(self, adapters: Dict[str, BaseExchangeAdapter]) -> List[SignalEvent]:
         signals_with_sort: List[tuple[float, SignalEvent]] = []
@@ -39,7 +39,8 @@ class OpenInterestScanner(BaseScanner):
                 growth_pct = (end - start) / start * 100
                 if growth_pct < config.OI_GROWTH_PCT:
                     continue
-                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1d", limit=config.OI_DAYS + 1)
+                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1d", limit=config.OI_DAYS + 2)
+                candles = self._drop_open_candle(candles, timeframe="1d")
                 if len(candles) < 2:
                     continue
 
@@ -71,10 +72,11 @@ class OpenInterestScanner(BaseScanner):
                         "oi_growth_pct": growth_pct,
                         "price_growth_pct": price_growth_pct,
                         "avg_daily_vol_usd": avg_daily_vol_usd,
+                        "oi_usd": end * end_close,
                     },
                     ttl_seconds=config.OI_DAYS * 24 * 3600,
                 )
-                sort_value = self._sort_value(end, signal.metrics["avg_daily_vol_usd"], signal.metrics["price_growth_pct"])
+                sort_value = self._sort_value(end, signal.metrics["avg_daily_vol_usd"], signal.metrics["price_growth_pct"], end_close)
                 signals_with_sort.append((sort_value, signal))
         signals_with_sort.sort(key=lambda item: item[0], reverse=True)
         return [item[1] for item in signals_with_sort]

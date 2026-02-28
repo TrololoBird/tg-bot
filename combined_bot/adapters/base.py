@@ -18,3 +18,6 @@ class BaseExchangeAdapter(ABC):
     @abstractmethod
     async def fetch_open_interest_history(self, symbol: str, days: int) -> List[Dict[str, Any]]:
         raise NotImplementedError
+
+    async def close(self) -> None:
+        return None

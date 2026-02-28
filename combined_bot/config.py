@@ -19,8 +19,11 @@ OI_GROWTH_PCT = float(os.getenv("OI_GROWTH_PCT", "50"))
 OI_MAX_PRICE_GROWTH_PCT = float(os.getenv("OI_MAX_PRICE_GROWTH_PCT", "50"))
 OI_MIN_AVG_DAILY_VOL_USD = float(os.getenv("OI_MIN_AVG_DAILY_VOL_USD", "5000000"))
 OI_SORT_BY = os.getenv("OI_SORT_BY", "oi_usd").strip().lower()
+_ALLOWED_OI_SORT_MODES = {"oi_usd", "oi_contracts", "price_growth", "avg_daily_vol_usd"}
+if OI_SORT_BY not in _ALLOWED_OI_SORT_MODES:
+    OI_SORT_BY = "oi_usd"
 
-ENABLED_EXCHANGES = [item.strip() for item in os.getenv("ENABLED_EXCHANGES", "binance").split(",") if item.strip()]
+ENABLED_EXCHANGES = [item.strip().lower() for item in os.getenv("ENABLED_EXCHANGES", "binance").split(",") if item.strip()]
 
 KNOWN_QUOTE_ASSETS = tuple(
     item.strip().upper()

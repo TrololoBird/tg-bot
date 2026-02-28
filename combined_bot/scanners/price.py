@@ -18,7 +18,8 @@ class PricePumpScanner(BaseScanner):
         for exchange, adapter in adapters.items():
             symbols = await adapter.list_symbols()
             for raw_symbol in symbols:
-                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1h", limit=24)
+                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1h", limit=25)
+                candles = self._drop_open_candle(candles, timeframe="1h")
                 if len(candles) < 24:
                     continue
                 first_close = float(candles[0][4])
