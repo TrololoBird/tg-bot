@@ -19,6 +19,11 @@ def test_market_symbol_keeps_canonical_symbol_for_colon_suffix() -> None:
     assert symbol.canonical_symbol == "BTC/USDT"
 
 
+def test_market_symbol_normalizes_no_slash_to_base_quote() -> None:
+    symbol = MarketSymbol.from_raw("binance", "BTCUSDT", market_type="linear_perp")
+    assert symbol.canonical_symbol == "BTC/USDT"
+
+
 def test_signal_dedup_key_uses_canonical_symbol() -> None:
     ts = datetime(2025, 1, 1, tzinfo=timezone.utc)
     signal_a = SignalEvent(
@@ -48,6 +53,18 @@ def test_user_settings_normalize_case_and_blacklist() -> None:
     assert settings.enabled_scanners == ["price_pump", "oi_spike"]
     assert settings.enabled_exchanges == ["binance", "bybit"]
     assert settings.blacklist_symbols == ["BTC/USDT", "ETH/USDT"]
+
+
+def test_user_settings_deduplicate_normalized_values() -> None:
+    settings = UserSettings(
+        chat_id=1,
+        enabled_scanners=["vol_spike", " VOL_SPIKE "],
+        enabled_exchanges=["binance", " BINANCE "],
+        blacklist_symbols=[" BTCUSDT ", "BTC/USDT:USDT"],
+    )
+    assert settings.enabled_scanners == ["vol_spike"]
+    assert settings.enabled_exchanges == ["binance"]
+    assert settings.blacklist_symbols == ["BTCUSDT", "BTC/USDT"]
 
 
 def test_user_settings_default_scanners_do_not_include_ml() -> None:
@@ -103,3 +120,14 @@ class _FixedDateTime(datetime):
     @classmethod
     def now(cls, tz=None):
         return datetime(2025, 1, 1, 11, 30, tzinfo=tz or timezone.utc)
+
+
+def test_drop_open_oi_point_excludes_unclosed_1d(monkeypatch) -> None:
+    scanner = OpenInterestScanner()
+    monkeypatch.setattr("combined_bot.scanners.oi.datetime", _FixedDateTime)
+    oi_hist = [
+        {"ts": int(datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc).timestamp() * 1000), "oi": 100},
+        {"ts": int(datetime(2025, 1, 2, 0, 0, tzinfo=timezone.utc).timestamp() * 1000), "oi": 120},
+    ]
+    filtered = scanner._drop_open_oi_point(oi_hist)
+    assert len(filtered) == 1

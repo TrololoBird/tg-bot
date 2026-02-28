@@ -8,3 +8,7 @@ class TelegramDispatcher:
         _ = chat_id, signal
         # Stub: integrate aiogram (or another single Telegram SDK) here.
         return
+
+
+    async def close(self) -> None:
+        return
