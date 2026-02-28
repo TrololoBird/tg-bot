@@ -28,6 +28,23 @@ class OpenInterestScanner(BaseScanner):
                 growth_pct = (end - start) / start * 100
                 if growth_pct < config.OI_GROWTH_PCT:
                     continue
+                candles = await adapter.fetch_ohlcv(raw_symbol, timeframe="1d", limit=config.OI_DAYS + 1)
+                if len(candles) < 2:
+                    continue
+
+                start_close = float(candles[0][4])
+                end_close = float(candles[-1][4])
+                if start_close <= 0:
+                    continue
+
+                price_growth_pct = (end_close - start_close) / start_close * 100
+                if price_growth_pct > config.OI_MAX_PRICE_GROWTH_PCT:
+                    continue
+
+                avg_daily_vol_usd = sum(float(candle[4]) * float(candle[5]) for candle in candles) / len(candles)
+                if avg_daily_vol_usd < config.OI_MIN_AVG_DAILY_VOL_USD:
+                    continue
+
                 ts = int(oi_hist[-1].get("ts", 0)) or int(datetime.now(tz=timezone.utc).timestamp() * 1000)
                 signals.append(
                     SignalEvent(
@@ -37,7 +54,13 @@ class OpenInterestScanner(BaseScanner):
                         detected_at=datetime.now(timezone.utc),
                         candle_close_at=datetime.fromtimestamp(ts / 1000, timezone.utc),
                         score=min(1.0, growth_pct / 200),
-                        metrics={"oi_start": start, "oi_end": end, "oi_growth_pct": growth_pct},
+                        metrics={
+                            "oi_start": start,
+                            "oi_end": end,
+                            "oi_growth_pct": growth_pct,
+                            "price_growth_pct": price_growth_pct,
+                            "avg_daily_vol_usd": avg_daily_vol_usd,
+                        },
                         ttl_seconds=config.OI_DAYS * 24 * 3600,
                     )
                 )
