@@ -1,0 +1,37 @@
+"""Abstract base class for all scanners.
+
+Scanners are responsible for examining market data and producing
+``SignalEvent`` objects when certain conditions are met. They should
+encapsulate only the logic for a single indicator or strategy and
+should not perform any actions beyond signal generation. Delivery of
+signals to users is handled elsewhere.
+"""
+
+from __future__ import annotations
+
+import abc
+from typing import Dict, List
+
+from ..adapters.base import BaseExchangeAdapter
+from ..models import SignalEvent
+
+
+class BaseScanner(abc.ABC):
+    """Base class that all scanners must derive from."""
+
+    id: str  # unique identifier for the scanner
+    name: str  # human readable name
+
+    def __init__(self) -> None:
+        if not getattr(self, "id", None):
+            raise ValueError("Scanner classes must define an 'id' class attribute")
+
+    @abc.abstractmethod
+    async def scan(self, adapters: Dict[str, BaseExchangeAdapter]) -> List[SignalEvent]:
+        """Perform a scan and return a list of signals.
+
+        ``adapters`` is a mapping from exchange identifiers to adapter
+        instances. A scanner may examine one or more exchanges. The
+        return list may be empty if no signals were detected.
+        """
+        raise NotImplementedError
