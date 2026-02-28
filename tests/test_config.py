@@ -16,3 +16,12 @@ def test_legacy_price_volume_env_alias(monkeypatch) -> None:
 
     importlib.reload(config)
     assert config.MIN_PRICE_SCANNER_VOL_USD_24H == 123
+
+
+def test_telegram_default_chat_id_alias(monkeypatch) -> None:
+    monkeypatch.delenv("TG_DEFAULT_CHAT_ID", raising=False)
+    monkeypatch.setenv("TG_ADMIN_CHAT_ID", "987654321")
+    import combined_bot.config as config
+
+    importlib.reload(config)
+    assert config.TG_DEFAULT_CHAT_ID == 987654321

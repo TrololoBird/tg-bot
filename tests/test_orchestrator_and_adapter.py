@@ -5,6 +5,7 @@ pytest.importorskip("ccxt.async_support")
 
 from combined_bot.adapters.binance import BinanceFuturesAdapter
 from combined_bot.core.orchestrator import Orchestrator
+from combined_bot.main import _bootstrap_default_user
 from combined_bot.models import UserSettings
 
 
@@ -17,6 +18,9 @@ class _DummyScanner:
 
 
 class _DummyDatabase:
+    def __init__(self):
+        self.saved = []
+
     def get_active_user_settings(self):
         return [UserSettings(chat_id=1)]
 
@@ -25,7 +29,7 @@ class _DummyDatabase:
         return False
 
     def remember_signal(self, signal):
-        _ = signal
+        self.saved.append(signal)
 
 
 class _DummyDispatcher:
@@ -104,3 +108,21 @@ async def test_binance_list_symbols_keeps_only_usdt_linear_swap():
     await adapter.close()
 
     assert symbols == ["BTC/USDT:USDT"]
+
+
+def test_bootstrap_default_user_uses_default_chat_id(monkeypatch):
+    class _Db:
+        def __init__(self):
+            self.upserted = None
+
+        def get_active_user_settings(self):
+            return []
+
+        def upsert_user_settings(self, settings):
+            self.upserted = settings
+
+    db = _Db()
+    monkeypatch.setattr("combined_bot.config.TG_DEFAULT_CHAT_ID", 123456)
+    _bootstrap_default_user(db)
+    assert db.upserted is not None
+    assert db.upserted.chat_id == 123456

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from typing import Dict, List
 
 from .. import config
@@ -39,7 +40,8 @@ class Orchestrator:
             signals.extend(result)
         return signals
 
-    async def _deliver(self, signal: SignalEvent, active_settings) -> None:
+    async def _deliver(self, signal: SignalEvent, active_settings) -> int:
+        delivered = 0
         signal_symbol = signal.symbol.canonical_symbol
         for settings in active_settings:
             if signal.scanner_id not in settings.enabled_scanners:
@@ -51,14 +53,32 @@ class Orchestrator:
             if signal.score < settings.min_score_threshold:
                 continue
             await self.dispatcher.send_signal(settings.chat_id, signal)
+            delivered += 1
+        return delivered
 
     async def run_once(self) -> None:
+        # The current delivery flow is designed for a single process/worker.
+        # Do not run multiple bot instances against the same database unless delivery reservation becomes atomic.
+        cycle_started = time.monotonic()
         active_settings = self.database.get_active_user_settings()
-        for signal in await self._collect_signals():
+        signals = await self._collect_signals()
+        duplicates = 0
+        delivered = 0
+        for signal in signals:
             if self.database.is_duplicate(signal):
+                duplicates += 1
                 continue
-            await self._deliver(signal, active_settings)
+            delivered += await self._deliver(signal, active_settings)
             self.database.remember_signal(signal)
+        elapsed = time.monotonic() - cycle_started
+        self.logger.info(
+            "cycle finished users=%s signals=%s delivered=%s duplicates=%s duration_sec=%.2f",
+            len(active_settings),
+            len(signals),
+            delivered,
+            duplicates,
+            elapsed,
+        )
 
     async def run(self) -> None:
         try:

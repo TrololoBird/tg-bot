@@ -9,6 +9,7 @@ from combined_bot.adapters.binance import BinanceFuturesAdapter
 from combined_bot.core.database import Database
 from combined_bot.core.orchestrator import Orchestrator
 from combined_bot.delivery.telegram_dispatcher import TelegramDispatcher
+from combined_bot.models import UserSettings
 from combined_bot.scanners import OpenInterestScanner, PricePumpScanner, VolumeSpikeScanner
 
 
@@ -30,9 +31,20 @@ def _build_adapters() -> dict[str, BaseExchangeAdapter]:
     return adapters
 
 
+def _bootstrap_default_user(database: Database) -> None:
+    if config.TG_DEFAULT_CHAT_ID is None:
+        return
+    active = database.get_active_user_settings()
+    if active:
+        return
+    database.upsert_user_settings(UserSettings(chat_id=config.TG_DEFAULT_CHAT_ID))
+    logging.getLogger(__name__).info("created default active user settings for chat_id=%s", config.TG_DEFAULT_CHAT_ID)
+
+
 def build_orchestrator() -> Orchestrator:
     logging.basicConfig(level=getattr(logging, config.LOG_LEVEL, logging.INFO))
     database = Database(config.DATABASE_PATH)
+    _bootstrap_default_user(database)
     adapters = _build_adapters()
     scanners = [
         VolumeSpikeScanner(),
