@@ -30,14 +30,15 @@ class MarketSymbol:
         quote = ""
         if "/" in tradable_symbol:
             base, quote = tradable_symbol.split("/", 1)
-        elif tradable_symbol.endswith("USDT"):
-            base, quote = tradable_symbol[:-4], "USDT"
-        elif tradable_symbol.endswith("USDC"):
-            base, quote = tradable_symbol[:-4], "USDC"
+        else:
+            for known_quote in ("USDT", "USDC", "BUSD", "FDUSD", "DAI"):
+                if tradable_symbol.endswith(known_quote):
+                    base, quote = tradable_symbol[: -len(known_quote)], known_quote
+                    break
         return cls(
             exchange=exchange.lower(),
             market_type=market_type,
-            raw_symbol=tradable_symbol,
+            raw_symbol=normalized,
             base_asset=base,
             quote_asset=quote,
         )

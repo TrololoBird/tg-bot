@@ -10,6 +10,8 @@ SCAN_INTERVAL_SECONDS = int(os.getenv("SCAN_INTERVAL", "300"))
 MIN_VOL_USD_LAST = float(os.getenv("MIN_VOL_USD_LAST", "20000000"))
 MIN_VOL_RATIO = float(os.getenv("MIN_VOL_RATIO", "5.0"))
 MIN_PRICE_RATIO = float(os.getenv("MIN_PRICE_RATIO", "1.30"))
+MIN_PRICE_VOL_USD_24H = float(os.getenv("MIN_PRICE_VOL_USD_24H", str(MIN_VOL_USD_LAST)))
+PRICE_SCORE_MAX_RATIO = float(os.getenv("PRICE_SCORE_MAX_RATIO", "2.0"))
 
 OI_DAYS = int(os.getenv("OI_DAYS", "30"))
 OI_GROWTH_PCT = float(os.getenv("OI_GROWTH_PCT", "50"))

@@ -13,7 +13,8 @@ from ..models import SignalEvent, UserSettings
 class Database:
     def __init__(self, path: Path) -> None:
         self.path = path
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.path.parent != Path("."):
+            self.path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
     @contextmanager
