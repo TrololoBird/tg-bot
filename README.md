@@ -35,7 +35,8 @@ requirements.txt
 - Источники реальных данных сейчас заглушены: `BinanceFuturesAdapter` возвращает пустые результаты.
 - Для продакшн-использования нужно реализовать адаптеры с сетевым доступом (HTTP/WebSocket, retry, rate-limit, таймауты).
 - Состояние и дедупликация сигналов хранятся в SQLite (`combined_bot/core/database.py`), JSON-файлы не используются.
-- Heartbeat-рассылки пользователям отсутствуют.
+- Heartbeat-рассылки пользователям пока не реализованы и не настраиваются через env-переменные.
+- `TelegramDispatcher` в текущем виде — stub. Выберите и подключите **одну** Telegram-библиотеку (`aiogram` или `python-telegram-bot`) в `combined_bot/delivery/telegram_dispatcher.py`.
 - Загрузка pickle-модели в ML-сканере выполняется только при наличии и совпадении SHA-256 хэша.
 
 ## Запуск
@@ -56,19 +57,32 @@ python -m combined_bot.main
 
 ## Переменные окружения (основные)
 
-- `MIN_VOL_USD_LAST` — минимальный объём за последние 24 часа (USD).
+- `LOG_LEVEL` — уровень логирования (`INFO` по умолчанию).
+- `DATABASE_PATH` — путь к SQLite-файлу (`signals.sqlite3` по умолчанию).
+- `SCAN_INTERVAL` — интервал между итерациями сканирования в секундах (`300` по умолчанию).
+- `ENABLED_EXCHANGES` — включённые биржи через запятую (`binance` по умолчанию).
+- `MIN_VOL_USD_LAST` — минимальный объём за последние 24 часа (USD) для volume-сканера.
 - `MIN_VOL_RATIO` — минимальный коэффициент роста объёма (24ч к предыдущим 24ч).
 - `MIN_PRICE_RATIO` — минимальный коэффициент роста цены за 24 часа.
+- `MIN_PRICE_VOL_USD_24H` — минимальный 24ч-объём (USD) для price-сканера (по умолчанию равен `MIN_VOL_USD_LAST`).
+- `PRICE_SCORE_MAX_RATIO` — коэффициент цены, при котором score price-сканера достигает 1.0 (`2.0` по умолчанию).
 - `OI_DAYS` — окно по open interest в днях.
 - `OI_GROWTH_PCT` — минимальный прирост OI в процентах.
 - `OI_MAX_PRICE_GROWTH_PCT` — максимальный допустимый рост цены для OI-сигнала.
 - `OI_MIN_AVG_DAILY_VOL_USD` — минимальный средний дневной объём (USD) для OI-сигнала.
 - `OI_SORT_BY` — сортировка OI-сигналов (`oi_usd` по умолчанию, также `oi_contracts`, `price_growth`, `avg_daily_vol_usd`).
 
-Пример выбора режима сортировки:
+Пример запуска:
 
 ```bash
-export OI_SORT_BY=price_growth
+LOG_LEVEL=DEBUG \
+DATABASE_PATH=./data/signals.sqlite3 \
+SCAN_INTERVAL=180 \
+ENABLED_EXCHANGES=binance \
+MIN_VOL_USD_LAST=20000000 \
+MIN_PRICE_VOL_USD_24H=15000000 \
+OI_SORT_BY=price_growth \
+python -m combined_bot.main
 ```
 
-`MarketSymbol.from_raw()` нормализует символы в форматах CCXT: удаляет пробелы, берёт часть до `:`, поддерживает пары вида `BASE/QUOTE` и склеенные тикеры с `USDT`/`USDC` (например `BTC/USDT:USDT` → `BTC/USDT`).
+`MarketSymbol.from_raw()` нормализует символы в форматах CCXT: удаляет пробелы, сохраняет исходный `raw_symbol` (в верхнем регистре) и отдельно разбирает торгуемую пару до `:` для `base/quote` (например `BTC/USDT:USDT`). Поддерживаются пары вида `BASE/QUOTE` и склеенные тикеры с суффиксами `USDT`, `USDC`, `BUSD`, `FDUSD`, `DAI`.

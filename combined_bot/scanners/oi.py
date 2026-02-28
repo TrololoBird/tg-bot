@@ -52,7 +52,8 @@ class OpenInterestScanner(BaseScanner):
                 if price_growth_pct > config.OI_MAX_PRICE_GROWTH_PCT:
                     continue
 
-                avg_daily_vol_usd = sum(float(candle[4]) * float(candle[5]) for candle in candles) / len(candles)
+                vol_window = candles[-config.OI_DAYS:] if len(candles) >= config.OI_DAYS else candles
+                avg_daily_vol_usd = sum(float(candle[4]) * float(candle[5]) for candle in vol_window) / len(vol_window)
                 if avg_daily_vol_usd < config.OI_MIN_AVG_DAILY_VOL_USD:
                     continue
 

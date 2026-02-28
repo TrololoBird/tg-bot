@@ -39,26 +39,38 @@ class Orchestrator:
             signals.extend(result)
         return signals
 
-    async def _deliver(self, signal: SignalEvent) -> None:
-        for settings in self.database.get_active_user_settings():
+
+    @staticmethod
+    def _normalize_symbol(symbol: str) -> str:
+        return symbol.strip().upper().split(":", 1)[0]
+
+    async def _deliver(self, signal: SignalEvent, active_settings) -> None:
+        signal_symbol = self._normalize_symbol(signal.symbol.raw_symbol)
+        for settings in active_settings:
             if signal.scanner_id not in settings.enabled_scanners:
                 continue
             if signal.symbol.exchange not in settings.enabled_exchanges:
                 continue
-            if signal.symbol.raw_symbol in settings.blacklist_symbols:
+            normalized_blacklist = {self._normalize_symbol(item) for item in settings.blacklist_symbols}
+            if signal_symbol in normalized_blacklist:
                 continue
             if signal.score < settings.min_score_threshold:
                 continue
             await self.dispatcher.send_signal(settings.chat_id, signal)
 
     async def run_once(self) -> None:
+        active_settings = self.database.get_active_user_settings()
         for signal in await self._collect_signals():
             if self.database.is_duplicate(signal):
                 continue
-            await self._deliver(signal)
+            await self._deliver(signal, active_settings)
             self.database.remember_signal(signal)
 
     async def run(self) -> None:
-        while True:
-            await self.run_once()
-            await asyncio.sleep(self.interval_seconds)
+        try:
+            while True:
+                await self.run_once()
+                await asyncio.sleep(self.interval_seconds)
+        except asyncio.CancelledError:
+            self.logger.info("orchestrator stopped")
+            raise
