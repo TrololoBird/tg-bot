@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Dict, List
+
+from .. import config
+from ..adapters.base import BaseExchangeAdapter
+from ..models import MarketSymbol, SignalEvent
+from .base import BaseScanner
+
+
+class OpenInterestScanner(BaseScanner):
+    id = "oi_spike"
+    name = "Open Interest Spike"
+
+    async def scan(self, adapters: Dict[str, BaseExchangeAdapter]) -> List[SignalEvent]:
+        signals: List[SignalEvent] = []
+        for exchange, adapter in adapters.items():
+            symbols = await adapter.list_symbols()
+            for raw_symbol in symbols:
+                oi_hist = await adapter.fetch_open_interest_history(raw_symbol, days=config.OI_DAYS)
+                if len(oi_hist) < 2:
+                    continue
+                start = float(oi_hist[0].get("oi", 0.0))
+                end = float(oi_hist[-1].get("oi", 0.0))
+                if start <= 0:
+                    continue
+                growth_pct = (end - start) / start * 100
+                if growth_pct < config.OI_GROWTH_PCT:
+                    continue
+                ts = int(oi_hist[-1].get("ts", 0)) or int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                signals.append(
+                    SignalEvent(
+                        scanner_id=self.id,
+                        symbol=MarketSymbol.from_raw(exchange, raw_symbol, market_type="linear_perp"),
+                        timeframe="1d",
+                        detected_at=datetime.now(timezone.utc),
+                        candle_close_at=datetime.fromtimestamp(ts / 1000, timezone.utc),
+                        score=min(1.0, growth_pct / 200),
+                        metrics={"oi_start": start, "oi_end": end, "oi_growth_pct": growth_pct},
+                        ttl_seconds=config.OI_DAYS * 24 * 3600,
+                    )
+                )
+        return signals
