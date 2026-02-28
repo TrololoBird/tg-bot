@@ -23,7 +23,7 @@ class MarketSymbol:
 
     @classmethod
     def from_raw(cls, exchange: str, raw_symbol: str, market_type: str = "spot") -> "MarketSymbol":
-        normalized = raw_symbol.strip()
+        normalized = raw_symbol.strip().upper()
         tradable_symbol = normalized.split(":", 1)[0]
 
         base = tradable_symbol
