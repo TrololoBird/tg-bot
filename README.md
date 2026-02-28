@@ -35,8 +35,9 @@ requirements.txt
 - `BinanceFuturesAdapter` подключен к `ccxt` (`binanceusdm`) и работает с линейными USDT perpetual-рынками.
 - Для других бирж (Bybit/MEXC/...) адаптеры пока не реализованы.
 - Состояние и дедупликация сигналов хранятся в SQLite (`combined_bot/core/database.py`), JSON-файлы не используются.
+- Текущая доставка рассчитана на single-worker запуск: не запускайте несколько инстансов на одной SQLite БД без атомарного reserve шага для dedup-key.
 - Heartbeat-рассылки пользователям пока не реализованы и не настраиваются через env-переменные.
-- `TelegramDispatcher` в текущем виде — stub.
+- `TelegramDispatcher` отправляет сигналы через `python-telegram-bot` в HTML-формате.
 - ML-сканер оставлен как экспериментальный модуль, но по умолчанию не включён в пользовательские настройки.
 
 ## Запуск
@@ -69,6 +70,20 @@ python -m combined_bot.main
 - `SCAN_INTERVAL_SECONDS` — интервал между итерациями сканирования в секундах (`300` по умолчанию).
 - `SCAN_INTERVAL` — legacy-алиас для `SCAN_INTERVAL_SECONDS`.
 - `ENABLED_EXCHANGES` — включённые биржи через запятую (`binance` по умолчанию), значения нормализуются в lowercase.
+
+### Telegram
+
+- `TG_BOT_TOKEN` — токен Telegram-бота (обязателен для отправки сообщений).
+- `TG_DEFAULT_CHAT_ID` — chat_id по умолчанию для автосоздания пользователя при пустой БД.
+- `TG_ADMIN_CHAT_ID` — legacy-алиас для `TG_DEFAULT_CHAT_ID`.
+
+### Exchange runtime
+
+- `SYMBOLS_CACHE_TTL_SECONDS` — TTL кэша списка символов в адаптере (`900` по умолчанию).
+- `TOP_SYMBOLS_LIMIT` — лимит количества символов на скан (`200` по умолчанию, `<=0` отключает лимит).
+- `ADAPTER_RETRY_ATTEMPTS` — количество retry для сетевых ошибок адаптера (`3`).
+- `ADAPTER_RETRY_BASE_DELAY_SECONDS` — базовая задержка экспоненциального backoff (`1.0`).
+- `ADAPTER_TIMEOUT_MS` — timeout запросов к бирже в миллисекундах (`10000`).
 
 ### Разбор символов
 

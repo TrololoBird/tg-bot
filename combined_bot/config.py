@@ -7,6 +7,10 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 DATABASE_PATH = Path(os.getenv("DATABASE_PATH", "signals.sqlite3"))
 SCAN_INTERVAL_SECONDS = int(os.getenv("SCAN_INTERVAL_SECONDS", os.getenv("SCAN_INTERVAL", "300")))
 
+TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
+_default_chat_id_raw = os.getenv("TG_DEFAULT_CHAT_ID", os.getenv("TG_ADMIN_CHAT_ID", "")).strip()
+TG_DEFAULT_CHAT_ID = int(_default_chat_id_raw) if _default_chat_id_raw else None
+
 MIN_VOL_USD_LAST = float(os.getenv("MIN_VOL_USD_LAST", "20000000"))
 MIN_VOL_RATIO = float(os.getenv("MIN_VOL_RATIO", "5.0"))
 MIN_PRICE_RATIO = float(os.getenv("MIN_PRICE_RATIO", "1.30"))
@@ -24,6 +28,12 @@ if OI_SORT_BY not in _ALLOWED_OI_SORT_MODES:
     OI_SORT_BY = "oi_usd"
 
 ENABLED_EXCHANGES = [item.strip().lower() for item in os.getenv("ENABLED_EXCHANGES", "binance").split(",") if item.strip()]
+SYMBOLS_CACHE_TTL_SECONDS = int(os.getenv("SYMBOLS_CACHE_TTL_SECONDS", "900"))
+TOP_SYMBOLS_LIMIT = int(os.getenv("TOP_SYMBOLS_LIMIT", "200"))
+
+ADAPTER_RETRY_ATTEMPTS = int(os.getenv("ADAPTER_RETRY_ATTEMPTS", "3"))
+ADAPTER_RETRY_BASE_DELAY_SECONDS = float(os.getenv("ADAPTER_RETRY_BASE_DELAY_SECONDS", "1.0"))
+ADAPTER_TIMEOUT_MS = int(os.getenv("ADAPTER_TIMEOUT_MS", "10000"))
 
 KNOWN_QUOTE_ASSETS = tuple(
     item.strip().upper()
