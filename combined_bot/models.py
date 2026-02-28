@@ -23,15 +23,18 @@ class MarketSymbol:
 
     @classmethod
     def from_raw(cls, exchange: str, raw_symbol: str, market_type: str = "spot") -> "MarketSymbol":
-        base = raw_symbol
+        normalized = raw_symbol.strip()
+        tradable_symbol = normalized.split(":", 1)[0]
+
+        base = tradable_symbol
         quote = ""
-        if "/" in raw_symbol:
-            base, quote = raw_symbol.split("/", 1)
-        elif raw_symbol.endswith("USDT"):
-            base, quote = raw_symbol[:-4], "USDT"
-        elif raw_symbol.endswith("USDC"):
-            base, quote = raw_symbol[:-4], "USDC"
-        return cls(exchange=exchange.lower(), market_type=market_type, raw_symbol=raw_symbol, base_asset=base, quote_asset=quote)
+        if "/" in tradable_symbol:
+            base, quote = tradable_symbol.split("/", 1)
+        elif tradable_symbol.endswith("USDT"):
+            base, quote = tradable_symbol[:-4], "USDT"
+        elif tradable_symbol.endswith("USDC"):
+            base, quote = tradable_symbol[:-4], "USDC"
+        return cls(exchange=exchange.lower(), market_type=market_type, raw_symbol=normalized, base_asset=base, quote_asset=quote)
 
 
 @dataclass
